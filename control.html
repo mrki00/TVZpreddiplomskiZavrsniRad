@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdn.socket.io/socket.io-3.0.0.js"></script>
+</head>
+<body>
+    <table style="width: 10%;">
+        <tbody>
+            <tr>
+                <td id="4444">4444</td>
+                           
+            </tr>
+        </tbody>
+    </table>
+    <h2 id="obsStats"></h2> <!-- Add base and output resolutin and warning if different -->
+    <ul>
+        
+    </ul>
+
+    <button id="toggleActiveB">toggleActive</button>
+
+    <select name="streamurls" id="port" onchange="rtmpChange()">
+        <option value="4444">4444</option>
+    </select>
+
+    
+    <input placeholder="stream key" id="streamKey">
+
+    <select name="streamurls" id="urls" onchange="rtmpChange()">
+        <option value="rtmp://a.rtmp.youtube.com/live2">Youtube</option>
+        <option value="katal">rtmp://katalmedia.ftpaccess.cc:1939/live</option>
+    </select>
+    <button id="streamserver">streamserver</button>
+
+    </br>
+    <img id="img" src="/screenshots/4444.png" width="50%">
+
+</body>
+<script>
+const socket = io('ws://localhost:6969');
+isActive();
+
+
+document.getElementById("toggleActiveB").onclick = () => {
+    var port = ['toggleActive', document.getElementById("port").value];
+    socket.emit('command', port);
+    
+}
+
+
+socket.on('commandRtrn', text => {
+
+    const el = document.createElement('li');
+    el.innerHTML = text;
+    document.querySelector('ul').appendChild(el)
+
+});
+
+function rtmpChange(){
+    console.log("rtmp changed")
+    streamStats();
+    isActive();
+}
+
+
+
+document.getElementById("streamserver").onclick = () => {
+    var text = ['streamserver', document.getElementById('port').value, document.getElementById('urls').value, document.getElementById('streamKey').value] //send rtmp key for yt
+    console.log(text);
+    socket.emit('command', text)
+    
+}
+
+function streamStats(){
+    var text = ['stats', document.querySelector('#port').value];
+    socket.emit('command', text);
+}
+
+
+
+socket.on('statsRtrn', hopefullydata => {
+    if(hopefullydata !== null){
+        //console.log(hopefullydata) 
+        document.getElementById('obsStats').innerHTML ="framerate: " + Math.round(hopefullydata.fps) + " cpu: " + Math.round(hopefullydata["cpu-usage"]) + "% RAM: " + Math.round(hopefullydata["memory-usage"]) + "MB"; 
+    }
+});
+
+function isActive(){
+    var port = ['isActive', document.querySelector('#port').value];
+    socket.emit('command', port);
+}
+
+socket.on('isActiveRtrn', text => {
+    console.log(text)
+    if(text){
+        document.body.style.backgroundColor = "green";
+        document.getElementById('toggleActiveB').innerHTML = "kiwf";
+        if(text[1][0] != text[1][1]){
+            document.getElementById('warning').innerHTML = "base and output resolution dont match \n" + text[1];
+        }
+    }
+    else{
+        document.body.style.backgroundColor = "red";
+        document.getElementById('toggleActiveB').innerHTML = "activate";
+    }
+});
+
+
+var intervalId = setInterval(streamStats(), 10000);   
+var imgRefresh = setInterval(()=>{
+    document.getElementById("img").src = "/screenshots/4444.png?t=" + new Date().getTime();
+    
+}, 10000);   
+</script>
+</html>
