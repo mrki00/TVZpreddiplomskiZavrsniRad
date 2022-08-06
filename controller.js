@@ -13,7 +13,7 @@ app.get('/', function(req, res){
 });
 app.use('/screenshots', express.static(__dirname +'/screenshots'));
 app.listen(8080, function(){
-    console.log("listening on port 80");
+    console.log("listening on port 8080");
 })
 //const makeProfile = require("./profileGenerator");
 const max720pEncodes = 30;
@@ -30,45 +30,22 @@ var tmp = [];
 
 var obsProcessList = {};
 obsProcessList[4444] = ["inactive"]; 
-
+//console.log(obsProcessList);
 
 const ports = Object.keys(obsProcessList);
+//console.log(ports);
 
 var intervalImg;
-
-async function checkIfActive(){
-    var defaultPort = 4444; 
-    console.log(ports.length)
-    for(var i = 0; i < ports.length; i++){
-        try{
-            var command = 'lsof -i :'+ (defaultPort+i);
-            //console.log(command);
-            const isPortActive = execSync(command);
-            //console.log(isPortActive.toString());
-            var pid = isPortActive.toString().split('NAME')[1].split("     ")[1].split(" ")[0];
-            //console.log(pid);
-            if(pid){
-                await obsFje.connection(ports[i], "test");
-                obsProcessList[ports[i]][0] = "active";
-                obsProcessList[ports[i]][1] = pid;
-                obsProcessList[ports[i]][4] = await obsFje.gimmeResolutions();
-                obsFje.letItGo();
-            }      
-        }catch (err){
-
-        }
-    }
-    console.log(obsProcessList);
-}
 
 async function wsOnStart(port){
     console.log('\n\ninside function\n\n');
     await obsFje.connection(port, "test");
         //console.log(port.substr(4, 4));
         obsProcessList[port][4] = await obsFje.gimmeResolutions();
+
         await obsFje.vlcConnect(obsProcessList[port][2]);
         
-        var tmpArr = await obsFje.streamStatus(); //obs takes too long to spawn
+        var tmpArr = await obsFje.streamStatus();
         console.log("//////////////////////////////////////////////");
         console.log(tmpArr);// [0] - recording status; [1] - streaming status
 
@@ -89,6 +66,7 @@ async function activateInstance(port){
             obsProcessList[port][0] = ['active'];
             intervalImg = setInterval(function () { obsFje.screenshotSource(port).catch((err) => { console.log("error", err) }) }, 10000);
             wsOnStart(port);
+            sendStats(port);
         }
     });
     obsProcessList[port][1] = obs.pid;
@@ -182,6 +160,20 @@ async function runInLoop() {
 
 }
 
+async function sendStats(port){
+    if(obsProcessList[port][0] == 'active'){
+        await obsFje.connection(port, "test");
+        var tmp3 = await obsFje.obsStats();
+        var tmp4 = await obsFje.streamStats();
+        //console.log(tmp3);
+        //console.log(tmp4);
+        //console.log(await obsFje.obsStats() + "check");
+        io.emit('rtrn', ['statsRtrn', tmp3, tmp4]);
+        await obsFje.letItGo();
+    }else{
+        console.log('ayo no status when it aint runnin');
+    }
+}
 
 io.on('connection', (socket) => {
     console.log('a user connected');
@@ -189,37 +181,39 @@ io.on('connection', (socket) => {
     socket.on('command', async(command) =>     {
         switch(command[0]){
             case 'streamserver':
-                await obsFje.connection(command[1], "test");
-                await obsFje.streamServer(command[2], command[3]);
-                await obsFje.letItGo();
-                io.emit('commandRtrn', `command successful` );
+                if(obsProcessList[4444][0] == 'active'){
+                    //console.log('doing something');
+                    await obsFje.connection(command[1], "test");
+                    await obsFje.streamServer(command[2], command[3]);
+                    await obsFje.letItGo();
+                    io.emit('rtrn',['commandRtrn', `command successful`] );
+                }else{ 
+                    console.log('ayo cant set when it aint runnin');
+                }
                 break;
             case 'stats':
-                await obsFje.connection(command[1], "test");
-                var tmp3 = await obsFje.obsStats();
-                //console.log(await obsFje.obsStats() + "check");
-                io.emit('statsRtrn', tmp3);
-                await obsFje.letItGo();
+                sendStats(4444);
                 break;
             case 'isActive':
                 if(obsProcessList[command[1]][0] == 'active'){
                     var data = [true, obsProcessList[command[1]][4]];
-                    console.log(data);
-                    io.emit('isActiveRtrn', data);
+                    data.unshift('isActiveRtrn');
+                    console.log(obsProcessList[command[1]][4]);
+                    io.emit('rtrn', data);
                 }
                 else if(obsProcessList[command[1]][0] == 'inactive'){
-                    io.emit('isActiveRtrn', false);
+                    io.emit('rtrn', ['isActiveRtrn', false]);
                 }        
                 break;
             case 'toggleActive':
                 if(obsProcessList[command[1]][0] == 'inactive'){
                     await activateInstance(command[1]);
                     io.emit('isActiveRtrn', true);
-                    console.log('should make bkg green');
+                    //console.log('should make bkg green');
                 }
                 else if(obsProcessList[command[1]][0] == 'active'){
                     execSync('kill -9 '+ obsProcessList[command[1]][1]);
-                    obsProcessList[command[1]] = ["inactive"]; //this is what was fixed when I couldnt remember in commit
+                    obsProcessList[command[1]] = ["inactive"]; 
                     io.emit('isActiveRtrn', false);
                 }
                 break;
@@ -232,7 +226,29 @@ http.listen(6969, () => console.log('listening on http://localhost:6969') );
 
 
 
-checkIfActive();
+
+(async () => {          //rewriten checkIfActive()
+    var defaultPort = 4444; 
+    for(var i = 0; i < ports.length; i++){
+        try{
+            var command = 'lsof -i :'+ (defaultPort+i);
+            const isPortActive = execSync(command);
+            //console.log(isPortActive.toString());
+            var pid = isPortActive.toString().split('NAME')[1].split("     ")[1].split(" ")[0];
+            console.log(pid);
+            if(pid){
+                await obsFje.connection(4444, "test");      //wont work if obsFje has uncommented test() function
+                obsProcessList[ports[i]][0] = "active";
+                obsProcessList[ports[i]][1] = pid;
+                obsProcessList[ports[i]][4] = await obsFje.gimmeResolutions();
+                obsFje.letItGo();
+            }      
+        }catch (err){
+            console.log(err);
+        }
+    }
+})();
+
 
 var intervalMain = setInterval(function () { runInLoop().catch((err) => { console.log("error", err) }) }, 1500);
 

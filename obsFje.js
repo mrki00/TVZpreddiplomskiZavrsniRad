@@ -1,4 +1,3 @@
-const res = require('express/lib/response');
 const OBSWebSocket = require('obs-websocket-js');
 const obs = new OBSWebSocket();
     
@@ -147,9 +146,23 @@ async function obsStats(){
         //lol idk fuck off
         console.log(error);
     })
-    //console.log(obsStats);
     if(obsStats !== undefined){
+        //console.log(obsStats.stats);
         return obsStats.stats;
+    }
+}
+
+async function streamStats(){
+    var obsStats = await obs.send('GetStreamingStatus').then(data => {
+        //console.log(data);
+        return data;
+    }).catch((error) => {
+        //lol idk fuck off
+        console.log(error);
+    })
+    if(obsStats !== undefined){
+        //console.log(obsStats);
+        return obsStats;
     }
 }
 
@@ -164,6 +177,7 @@ async function gimmeResolutions(){
     //console.log(obsStats);
     if(resInfo !== undefined){
         const res = [resInfo["baseWidth"] + 'x' + resInfo["baseHeight"], resInfo["outputWidth"] + 'x' + resInfo["outputHeight"]];
+        //console.log(res);
         return res;
     }
 }
@@ -199,7 +213,7 @@ async function stretchSources(sourceName, resolution){
 async function test(){
     await connection(4444, "test");
 
-    await screenshotSource();
+    await gimmeResolutions();
 
     letItGo();
  
@@ -207,7 +221,7 @@ async function test(){
 }
 
 
-//test();
+//test();           //make sure this function wont run cause it breaks other documents
 
 module.exports = { 
     setScore,
@@ -221,7 +235,9 @@ module.exports = {
     stopStream,
     obsStats,
     gimmeResolutions,
-    screenshotSource
+    screenshotSource,
+    stretchSources,
+    streamStats
 };
 
 

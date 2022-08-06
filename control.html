@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <script src="https://cdn.socket.io/socket.io-3.0.0.js"></script>
+    <script src="https://cdn.socket.io/3.0.5/socket.io.min.js"></script>
 </head>
 <body>
     <table style="width: 10%;">
@@ -21,97 +21,122 @@
     </ul>
 
     <button id="toggleActiveB">toggleActive</button>
-
+<!--
     <select name="streamurls" id="port" onchange="rtmpChange()">
         <option value="4444">4444</option>
     </select>
-
+-->
+    <button onclick="rtmpChange()">refresh</button>
     
     <input placeholder="stream key" id="streamKey">
 
     <select name="streamurls" id="urls" onchange="rtmpChange()">
         <option value="rtmp://a.rtmp.youtube.com/live2">Youtube</option>
-        <option value="katal">rtmp://katalmedia.ftpaccess.cc:1939/live</option>
+        <option value="rtmp://katalmedia.ftpaccess.cc:1939/live">katal</option>
     </select>
-    <button id="streamserver">streamserver</button>
+    <button id="streamserver" onclick="setStreamDestination()">set streamserver</button>
 
     </br>
     <img id="img" src="/screenshots/4444.png" width="50%">
+    <button id="startOrStopStream"></button>
 
 </body>
 <script>
 const socket = io('ws://localhost:6969');
 isActive();
 
-
+//single socket
 document.getElementById("toggleActiveB").onclick = () => {
     var port = ['toggleActive', document.getElementById("port").value];
     socket.emit('command', port);
+    streamStats();
     
 }
 
-
-socket.on('commandRtrn', text => {
-
-    const el = document.createElement('li');
-    el.innerHTML = text;
-    document.querySelector('ul').appendChild(el)
-
-});
-
-function rtmpChange(){
-    console.log("rtmp changed")
-    streamStats();
-    isActive();
-}
-
-
-
-document.getElementById("streamserver").onclick = () => {
-    var text = ['streamserver', document.getElementById('port').value, document.getElementById('urls').value, document.getElementById('streamKey').value] //send rtmp key for yt
+function setStreamDestination(){
+    var text = ['streamserver', 4444, document.getElementById('urls').value, document.getElementById('streamKey').value] //send rtmp key for yt
     console.log(text);
     socket.emit('command', text)
     
 }
 
+document.getElementById("startOrStopStream").onclick = () => {
+    var text = ['startOrStopStream', 4444] //send rtmp key for yt
+    //console.log(text);
+    socket.emit('command', text)
+    
+}
+
 function streamStats(){
-    var text = ['stats', document.querySelector('#port').value];
+    var text = ['stats', 4444];
     socket.emit('command', text);
 }
 
+function isActive(){
+    var port = ['isActive', 4444];
+    socket.emit('command', port);
+}
+//single socket
 
+
+/*
 
 socket.on('statsRtrn', hopefullydata => {
     if(hopefullydata !== null){
-        //console.log(hopefullydata) 
+        console.log(hopefullydata);
+
         document.getElementById('obsStats').innerHTML ="framerate: " + Math.round(hopefullydata.fps) + " cpu: " + Math.round(hopefullydata["cpu-usage"]) + "% RAM: " + Math.round(hopefullydata["memory-usage"]) + "MB"; 
     }
 });
+*/
 
-function isActive(){
-    var port = ['isActive', document.querySelector('#port').value];
-    socket.emit('command', port);
+socket.on('rtrn', data => {
+    switch (data[0]){
+        case 'isActiveRtrn':
+            //console.log(data);
+            if(data[1]){
+            document.body.style.backgroundColor = "green";
+            document.getElementById('toggleActiveB').innerHTML = "kiwf";
+            if(data[2][0] != data[2][1]){
+                document.getElementById('warning').innerHTML = "base and output resolution dont match \n" + data[2];
+            }else{
+                //console.log("all good");
+            }
+            }
+            else{
+                document.body.style.backgroundColor = "red";
+                document.getElementById('toggleActiveB').innerHTML = "activate";
+            }
+            break;
+        
+        case 'commandRtrn':
+            console.log(data);
+            break;
+        
+        case 'statsRtrn':
+            //console.log(data);
+            if(data[1] !== null){
+            //console.log(data);
+            document.getElementById('obsStats').innerHTML ="framerate: " + Math.round(data[1]["fps"]) + " cpu: " + Math.round(data[1]["cpu-usage"]) + "% RAM: " + Math.round(data[1]["memory-usage"]) + "MB"; 
+            }
+            break;
+    }
+
+})
+
+
+
+
+function rtmpChange(){
+//console.log("rtmp changed")
+streamStats();
+isActive();
 }
-
-socket.on('isActiveRtrn', text => {
-    console.log(text)
-    if(text){
-        document.body.style.backgroundColor = "green";
-        document.getElementById('toggleActiveB').innerHTML = "kiwf";
-        if(text[1][0] != text[1][1]){
-            document.getElementById('warning').innerHTML = "base and output resolution dont match \n" + text[1];
-        }
-    }
-    else{
-        document.body.style.backgroundColor = "red";
-        document.getElementById('toggleActiveB').innerHTML = "activate";
-    }
-});
 
 
 var intervalId = setInterval(streamStats(), 10000);   
 var imgRefresh = setInterval(()=>{
-    document.getElementById("img").src = "/screenshots/4444.png?t=" + new Date().getTime();
+    document.getElementById("img").src = "/screenshots/4444.png?t=" + new Date().getTime(); //date because browser caches images
     
 }, 10000);   
 </script>
