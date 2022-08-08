@@ -39,7 +39,7 @@ var intervalImg;
 
 async function wsOnStart(port){
     console.log('\n\ninside function\n\n');
-    await obsFje.connection(port, "test");
+    obsProcessList[ports[i]][5] = await obsFje.connection(port, "test");
         //console.log(port.substr(4, 4));
         obsProcessList[port][4] = await obsFje.gimmeResolutions();
 
@@ -85,11 +85,11 @@ async function activateInstance(port){
     });
     /*
     await waitfor(1000);
-    await obsFje.connection(port, "test");
+    obsProcessList[port][5] = await obsFje.connection(port, "test");
     obsProcessList[port][0] = "active"; // error if websocket could not be started
     obsProcessList[port][1] = obs.pid;
     obsProcessList[port][4] = await obsFje.gimmeResolutions();
-    obsFje.letItGo();
+    obsProcessList[4444][5] = await obsFje.letItGo();
     */
 }
 
@@ -130,7 +130,7 @@ async function runInLoop() {
             
                     }
                     else{
-                        await obsFje.connection("4444", "test");
+                        obsProcessList[4444][5] = await obsFje.connection("4444", "test");
                         await obsFje.vlcConnect(diff[i]);
                         //console.log(diff[i].substr(4, 4));
                         intervalImg = setInterval(function() { console.log("new screenshot"); obsFje.screenshotSource(4444).catch((err) => { console.log("error", err) }) }, 10000);
@@ -147,7 +147,7 @@ async function runInLoop() {
                 
                     
                     }  
-                obsFje.letItGo();
+                obsProcessList[4444][5] = await obsFje.letItGo();
             }
         }
         
@@ -162,14 +162,14 @@ async function runInLoop() {
 
 async function sendStats(port){
     if(obsProcessList[port][0] == 'active'){
-        await obsFje.connection(port, "test");
+        obsProcessList[port][5] = await obsFje.connection(port, "test");
         var tmp3 = await obsFje.obsStats();
         var tmp4 = await obsFje.streamStats();
         //console.log(tmp3);
         //console.log(tmp4);
         //console.log(await obsFje.obsStats() + "check");
         io.emit('rtrn', ['statsRtrn', tmp3, tmp4]);
-        await obsFje.letItGo();
+        obsProcessList[port][5] = await obsFje.letItGo();
     }else{
         console.log('ayo no status when it aint runnin');
     }
@@ -183,9 +183,9 @@ io.on('connection', (socket) => {
             case 'streamserver':
                 if(obsProcessList[4444][0] == 'active'){
                     //console.log('doing something');
-                    await obsFje.connection(command[1], "test");
+                    obsProcessList[4444][5] = await obsFje.connection(command[1], "test");
                     await obsFje.streamServer(command[2], command[3]);
-                    await obsFje.letItGo();
+                    obsProcessList[4444][5] = await obsFje.letItGo();
                     io.emit('rtrn',['commandRtrn', `command successful`] );
                 }else{ 
                     console.log('ayo cant set when it aint runnin');
@@ -217,6 +217,24 @@ io.on('connection', (socket) => {
                     io.emit('isActiveRtrn', false);
                 }
                 break;
+            case 'startOrStopStream':
+                if(obsProcessList[4444][0] == 'active'){
+                    //console.log(command[1]);
+                    obsProcessList[4444][5] = await obsFje.connection(4444, "test");
+                    var tmp2 = await obsFje.streamStats();
+                    if(!tmp2["streaming"]){
+                        await obsFje.startStream().then(async ()=>{
+                            socket.emit('startOrStopFront', [null, await obsFje.obsStats(), await obsFje.streamStats()]);
+                        });
+                    }else{
+                        await obsFje.stopStream().then(async ()=>{
+                            socket.emit('startOrStopFront', [null, await obsFje.obsStats(), await obsFje.streamStats()]);
+                        });
+                    }
+                    
+                    obsProcessList[4444][5] = await obsFje.letItGo();
+                }
+                break;
         }
     });
 
@@ -237,16 +255,17 @@ http.listen(6969, () => console.log('listening on http://localhost:6969') );
             var pid = isPortActive.toString().split('NAME')[1].split("     ")[1].split(" ")[0];
             console.log(pid);
             if(pid){
-                await obsFje.connection(4444, "test");      //wont work if obsFje has uncommented test() function
-                obsProcessList[ports[i]][0] = "active";
+                obsProcessList[ports[i]][5] = await obsFje.connection(4444, "test");      //wont work if obsFje has uncommented test() function
+                obsProcessList[ports[i]][0] = obsProcessList[ports[i]][0] = "active";
                 obsProcessList[ports[i]][1] = pid;
                 obsProcessList[ports[i]][4] = await obsFje.gimmeResolutions();
-                obsFje.letItGo();
+                obsProcessList[ports[i]][5] = await obsFje.letItGo();
             }      
         }catch (err){
             console.log(err);
         }
     }
+    console.log(obsProcessList);
 })();
 
 

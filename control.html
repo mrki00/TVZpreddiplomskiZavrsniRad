@@ -64,6 +64,15 @@ document.getElementById("startOrStopStream").onclick = () => {
     var text = ['startOrStopStream', 4444] //send rtmp key for yt
     //console.log(text);
     socket.emit('command', text)
+    socket.once('startOrStopFront', data => {
+        if(document.getElementById("startOrStopStream").style.backgroundColor !== 'red'){
+            document.getElementById("startOrStopStream").style.background = 'red';
+            document.getElementById("startOrStopStream").innerHTML = "stop streaming";
+        }else{
+            document.getElementById("startOrStopStream").innerHTML = "start streaming";
+            document.getElementById("startOrStopStream").style.background = 'white';
+        }
+    })
     
 }
 
@@ -79,16 +88,6 @@ function isActive(){
 //single socket
 
 
-/*
-
-socket.on('statsRtrn', hopefullydata => {
-    if(hopefullydata !== null){
-        console.log(hopefullydata);
-
-        document.getElementById('obsStats').innerHTML ="framerate: " + Math.round(hopefullydata.fps) + " cpu: " + Math.round(hopefullydata["cpu-usage"]) + "% RAM: " + Math.round(hopefullydata["memory-usage"]) + "MB"; 
-    }
-});
-*/
 
 socket.on('rtrn', data => {
     switch (data[0]){
@@ -116,8 +115,14 @@ socket.on('rtrn', data => {
         case 'statsRtrn':
             //console.log(data);
             if(data[1] !== null){
-            //console.log(data);
-            document.getElementById('obsStats').innerHTML ="framerate: " + Math.round(data[1]["fps"]) + " cpu: " + Math.round(data[1]["cpu-usage"]) + "% RAM: " + Math.round(data[1]["memory-usage"]) + "MB"; 
+                document.getElementById('obsStats').innerHTML ="framerate: " + Math.round(data[1]["fps"]) + " cpu: " + Math.round(data[1]["cpu-usage"]) + "% RAM: " + Math.round(data[1]["memory-usage"]) + "MB"; 
+                if(data[2]["streaming"]){
+                    document.getElementById("startOrStopStream").style.background = 'red';
+                    document.getElementById("startOrStopStream").innerHTML = "stop streaming";
+                }else{
+                    document.getElementById("startOrStopStream").innerHTML = "start streaming";
+                    document.getElementById("startOrStopStream").style.background = 'white';
+                }
             }
             break;
     }
